@@ -1,0 +1,7 @@
+# 0002 · Transactional aggregate storage and invalidation
+
+The PostgreSQL adapter stores typed room, match, membership, session, transition and receipt records in keyed JSONB collections. A transaction-scoped advisory lock serializes a room and its current match. The membership collection's primary key enforces one active room per principal. Indexed due times make room deadlines available to the worker. A separate outbox table allows the worker to repeat an update signal after missed delivery.
+
+API read paths reauthorize each projection. PostgreSQL NOTIFY distributes room invalidations with no board or credential payload. A replica reads the current authorized projection before sending it to local subscribers. The Redis Streams adapter is configured for Socket.IO and Redis holds distributed admission counters. Durable node heartbeat epochs and connection observations drive presence and reconnection on the current two-player path.
+
+The aggregate layout is a deviation from the specification's normalized table baseline. Server-side projection and transaction tests cover the two enabled games. Generalizing host/join/forfeit policy to the 3/4-seat test fixture through HTTP and sockets remains open. The hidden-information fixture currently exercises the pure engine contract and never enters the public game registry. Before claiming launch capacity, measure database write amplification and projection reads under sustained offered load.

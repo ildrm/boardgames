@@ -1,0 +1,13 @@
+{
+  "name": "@tablemate/game-four-in-a-row",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@tablemate/contracts": "workspace:*",
+    "@tablemate/game-engine": "workspace:*"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@tablemate/test-utils",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@tablemate/contracts": "workspace:*",
+    "@tablemate/game-engine": "workspace:*",
+    "zod": "4.6.7"
+  }
+}

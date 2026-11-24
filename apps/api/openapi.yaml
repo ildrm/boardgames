@@ -1,0 +1,519 @@
+openapi: 3.1.0
+info:
+  title: Tablemate HTTP API
+  version: 1.0.0
+  description: >
+    Same-origin API for the private-room web app. Room and match revisions are decimal strings.
+    Acknowledged mutations can be retried with the original command ID and equivalent payload.
+    The socket transport uses the same mutation handlers and authorized projections.
+servers:
+  - url: /api/v1
+security:
+  - sessionCookie: []
+paths:
+  /sessions/bootstrap:
+    post:
+      security: []
+      operationId: bootstrapGuest
+      summary: Establish a five-minute browser-bound guest bootstrap proof
+      responses:
+        '200': { description: Browser proof established in an HttpOnly cookie }
+        default: { $ref: '#/components/responses/Failure' }
+  /sessions/guest:
+    post:
+      security: []
+      operationId: createGuest
+      summary: Create or recover a guest session using the bootstrap proof
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [commandId]
+              properties:
+                commandId: { $ref: '#/components/schemas/Id' }
+                nickname: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Profile' }
+        default: { $ref: '#/components/responses/Failure' }
+  /me:
+    get:
+      operationId: getProfile
+      responses:
+        '200': { $ref: '#/components/responses/Profile' }
+        default: { $ref: '#/components/responses/Failure' }
+    patch:
+      operationId: renameGuest
+      summary: Set a nickname before participating in a match
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [nickname]
+              properties:
+                nickname: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Profile' }
+        default: { $ref: '#/components/responses/Failure' }
+  /me/session:
+    delete:
+      operationId: revokeSession
+      summary: Revoke the current session and clear the browser cookies
+      responses:
+        '200': { description: Session revoked }
+        default: { $ref: '#/components/responses/Failure' }
+  /me/deletion-request:
+    post:
+      operationId: requestDeletion
+      summary: Record a confirmed deletion request and revoke the session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [confirmed]
+              properties:
+                confirmed: { const: true }
+      responses:
+        '202': { description: Pending request recorded and session revoked }
+        default: { $ref: '#/components/responses/Failure' }
+  /games:
+    get:
+      security: []
+      operationId: listGames
+      responses:
+        '200': { description: Enabled game metadata in the success envelope }
+  /games/{gameId}:
+    parameters:
+      - name: gameId
+        in: path
+        required: true
+        schema: { $ref: '#/components/schemas/GameId' }
+    get:
+      security: []
+      operationId: getGame
+      responses:
+        '200': { description: Enabled game metadata in the success envelope }
+        default: { $ref: '#/components/responses/Failure' }
+  /rooms:
+    post:
+      operationId: createRoom
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [gameId, commandId]
+              properties:
+                commandId: { $ref: '#/components/schemas/Id' }
+                gameId: { $ref: '#/components/schemas/GameId' }
+                rulesVersion: { type: integer, minimum: 1 }
+      responses:
+        '201': { $ref: '#/components/responses/RoomMutation' }
+        default: { $ref: '#/components/responses/Failure' }
+  /invites/preview:
+    post:
+      security: []
+      operationId: previewInvite
+      summary: Read safe catalog metadata without reserving a seat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token]
+              properties:
+                token: { $ref: '#/components/schemas/InviteToken' }
+      responses:
+        '200': { description: Game ID, title and rules version in the success envelope }
+        default: { $ref: '#/components/responses/Failure' }
+  /rooms/join:
+    post:
+      operationId: joinRoom
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token, commandId]
+              properties:
+                token: { $ref: '#/components/schemas/InviteToken' }
+                commandId: { $ref: '#/components/schemas/Id' }
+      responses:
+        '200': { $ref: '#/components/responses/RoomMutation' }
+        default: { $ref: '#/components/responses/Failure' }
+  /rooms/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get:
+      operationId: getRoom
+      responses:
+        '200': { $ref: '#/components/responses/RoomView' }
+        default: { $ref: '#/components/responses/Failure' }
+  /rooms/{id}/matches:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get:
+      operationId: getRoomHistory
+      summary: Recent finished matches in which the current member held a seat
+      responses:
+        '200': { description: Eligible match summaries in the success envelope }
+        default: { $ref: '#/components/responses/Failure' }
+  /rooms/{id}/invitations/rotate:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    post:
+      operationId: rotateInvite
+      summary: Invalidate the old invitation and issue one new link
+      requestBody: { $ref: '#/components/requestBodies/RoomCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/RoomMutation' }
+        default: { $ref: '#/components/responses/Failure' }
+  /rooms/{id}/leave:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    post:
+      operationId: leaveRoom
+      summary: Release a lobby seat or close the room when the host leaves
+      requestBody: { $ref: '#/components/requestBodies/RoomCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/RoomMutation' }
+        default: { $ref: '#/components/responses/Failure' }
+  /rooms/{id}/start:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    post:
+      operationId: startMatch
+      summary: Start a ready match. Only the host may start.
+      requestBody: { $ref: '#/components/requestBodies/RoomCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/MatchMutation' }
+        default: { $ref: '#/components/responses/Failure' }
+  /matches/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get:
+      operationId: getMatch
+      responses:
+        '200': { $ref: '#/components/responses/MatchView' }
+        default: { $ref: '#/components/responses/Failure' }
+  /matches/{id}/actions:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    post:
+      operationId: submitAction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [commandId, expectedVersion, action]
+              properties:
+                commandId: { $ref: '#/components/schemas/Id' }
+                expectedVersion: { $ref: '#/components/schemas/Version' }
+                action: { $ref: '#/components/schemas/Action' }
+      responses:
+        '200': { $ref: '#/components/responses/MatchMutation' }
+        default: { $ref: '#/components/responses/Failure' }
+  /matches/{id}/resign:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    post:
+      operationId: resignMatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [commandId, expectedVersion]
+              properties:
+                commandId: { $ref: '#/components/schemas/Id' }
+                expectedVersion: { $ref: '#/components/schemas/Version' }
+      responses:
+        '200': { $ref: '#/components/responses/MatchMutation' }
+        default: { $ref: '#/components/responses/Failure' }
+  /matches/{id}/rematch-consent:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    post:
+      operationId: setRematchConsent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [commandId, expectedRoomVersion, consent]
+              properties:
+                commandId: { $ref: '#/components/schemas/Id' }
+                expectedRoomVersion: { $ref: '#/components/schemas/Version' }
+                consent: { type: boolean }
+      responses:
+        '200': { $ref: '#/components/responses/RoomMutation' }
+        default: { $ref: '#/components/responses/Failure' }
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-tablemate_session
+      description: Local HTTP uses tablemate_session. Mutations require an allowed browser origin.
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Id' }
+  requestBodies:
+    RoomCommand:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [commandId, expectedRoomVersion]
+            properties:
+              commandId: { $ref: '#/components/schemas/Id' }
+              expectedRoomVersion: { $ref: '#/components/schemas/Version' }
+  responses:
+    Failure:
+      description: Stable application error. Private inaccessible and unknown object IDs share a response.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Failure' }
+    Profile:
+      description: Guest identity and current room
+      content:
+        application/json:
+          schema:
+            allOf:
+              - { $ref: '#/components/schemas/Success' }
+              - properties:
+                  data:
+                    type: object
+                    required: [principalId, nickname, activeRoomId]
+                    properties:
+                      principalId: { $ref: '#/components/schemas/Id' }
+                      nickname: { type: string }
+                      activeRoomId: { type: [string, 'null'], format: uuid }
+    RoomView:
+      description: Membership-scoped lobby view
+      content:
+        application/json:
+          schema:
+            allOf:
+              - { $ref: '#/components/schemas/Success' }
+              - properties:
+                  data: { $ref: '#/components/schemas/Room' }
+    MatchView:
+      description: Authorized player projection
+      content:
+        application/json:
+          schema:
+            allOf:
+              - { $ref: '#/components/schemas/Success' }
+              - properties:
+                  data: { $ref: '#/components/schemas/Match' }
+    RoomMutation:
+      description: Committed room outcome. A raw link is returned only on original issuance.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - { $ref: '#/components/schemas/Mutation' }
+              - properties:
+                  data:
+                    type: object
+                    required: [roomId]
+                    properties:
+                      roomId: { $ref: '#/components/schemas/Id' }
+                      roomView: { $ref: '#/components/schemas/Room' }
+                      inviteUrl: { type: string, format: uri }
+    MatchMutation:
+      description: Committed match outcome and player projection
+      content:
+        application/json:
+          schema:
+            allOf:
+              - { $ref: '#/components/schemas/Mutation' }
+              - properties:
+                  data:
+                    type: object
+                    required: [matchId, playerView]
+                    properties:
+                      matchId: { $ref: '#/components/schemas/Id' }
+                      playerView: { $ref: '#/components/schemas/Match' }
+  schemas:
+    Id: { type: string, format: uuid }
+    GameId: { type: string, enum: [tic-tac-toe, four-in-a-row] }
+    Version: { type: string, pattern: '^(0|[1-9][0-9]{0,18})$' }
+    InviteToken: { type: string, pattern: '^[A-Za-z0-9_-]{43}$' }
+    Success:
+      type: object
+      required: [ok, data]
+      properties:
+        ok: { const: true }
+        data: {}
+    Mutation:
+      allOf:
+        - { $ref: '#/components/schemas/Success' }
+        - required: [commandId, aggregateVersion]
+          properties:
+            commandId: { $ref: '#/components/schemas/Id' }
+            aggregateVersion: { $ref: '#/components/schemas/Version' }
+    Failure:
+      type: object
+      required: [ok, code]
+      properties:
+        ok: { const: false }
+        code: { type: string }
+        commandId: { $ref: '#/components/schemas/Id' }
+        retryable: { type: boolean }
+        currentVersion: { $ref: '#/components/schemas/Version' }
+        retryAfterMs: { type: integer, minimum: 1 }
+    Cell:
+      type: object
+      required: [row, col]
+      properties:
+        row: { type: integer, minimum: 0, maximum: 5 }
+        col: { type: integer, minimum: 0, maximum: 6 }
+    Lines:
+      type: array
+      items:
+        type: array
+        items: { $ref: '#/components/schemas/Cell' }
+    Action:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [type, payload]
+          properties:
+            type: { const: PLACE_MARK }
+            payload:
+              type: object
+              additionalProperties: false
+              required: [row, col]
+              properties:
+                row: { type: integer, minimum: 0, maximum: 2 }
+                col: { type: integer, minimum: 0, maximum: 2 }
+        - type: object
+          additionalProperties: false
+          required: [type, payload]
+          properties:
+            type: { const: DROP_DISC }
+            payload:
+              type: object
+              additionalProperties: false
+              required: [col]
+              properties:
+                col: { type: integer, minimum: 0, maximum: 6 }
+    Seat:
+      type: object
+      required: [seatId, nickname, isHost, presence]
+      properties:
+        seatId: { $ref: '#/components/schemas/Id' }
+        nickname: { type: string }
+        isHost: { type: boolean }
+        presence: { enum: [CONNECTED, DISCONNECTED, UNKNOWN] }
+        role: { enum: [A, B, X, O] }
+    Room:
+      type: object
+      required: [roomId, gameId, rulesVersion, roomVersion, presenceRevision, status, readiness, viewerSeatId, hostSeatId, seats, currentMatchId, lastMatchId, rematchConsents, series, inviteExpiresAt, applicableDeadline, serverTime]
+      properties:
+        roomId: { $ref: '#/components/schemas/Id' }
+        gameId: { $ref: '#/components/schemas/GameId' }
+        rulesVersion: { type: integer }
+        roomVersion: { $ref: '#/components/schemas/Version' }
+        presenceRevision: { $ref: '#/components/schemas/Version' }
+        status: { enum: [OPEN, PLAYING, CLOSED, EXPIRED] }
+        readiness: { enum: [WAITING, READY, REMATCH_WAITING, REMATCH_READY] }
+        viewerSeatId: { $ref: '#/components/schemas/Id' }
+        hostSeatId: { $ref: '#/components/schemas/Id' }
+        seats:
+          type: array
+          items: { $ref: '#/components/schemas/Seat' }
+        currentMatchId: { type: [string, 'null'], format: uuid }
+        lastMatchId: { type: [string, 'null'], format: uuid }
+        rematchConsents:
+          type: array
+          items: { $ref: '#/components/schemas/Id' }
+        series:
+          type: object
+          required: [wins, draws]
+          properties:
+            draws: { type: integer, minimum: 0 }
+            wins:
+              type: object
+              additionalProperties: { type: integer, minimum: 0 }
+        inviteExpiresAt: { type: [string, 'null'], format: date-time }
+        applicableDeadline: { type: [string, 'null'], format: date-time }
+        serverTime: { type: string, format: date-time }
+    Match:
+      type: object
+      properties:
+        matchId: { $ref: '#/components/schemas/Id' }
+        roomId: { $ref: '#/components/schemas/Id' }
+        gameId: { $ref: '#/components/schemas/GameId' }
+        rulesVersion: { type: integer }
+        stateSchemaVersion: { type: integer }
+        stateVersion: { $ref: '#/components/schemas/Version' }
+        roomVersion: { $ref: '#/components/schemas/Version' }
+        presenceRevision: { $ref: '#/components/schemas/Version' }
+        status: { enum: [ACTIVE, PAUSED, FINISHED, ABANDONED] }
+        viewerSeatId: { $ref: '#/components/schemas/Id' }
+        hostSeatId: { $ref: '#/components/schemas/Id' }
+        roster:
+          type: array
+          items: { $ref: '#/components/schemas/Seat' }
+        board:
+          type: array
+          items:
+            type: array
+            items: { enum: [A, B, X, O, null] }
+        moveCount: { type: integer, minimum: 0 }
+        turnSeatId: { type: [string, 'null'], format: uuid }
+        activeSeatIds:
+          type: array
+          items: { $ref: '#/components/schemas/Id' }
+        legalActions:
+          type: array
+          items: { $ref: '#/components/schemas/Action' }
+        lastMove:
+          anyOf:
+            - { type: 'null' }
+            - allOf:
+                - { $ref: '#/components/schemas/Cell' }
+                - required: [seatId]
+                  properties:
+                    seatId: { $ref: '#/components/schemas/Id' }
+        winningLines: { $ref: '#/components/schemas/Lines' }
+        result:
+          anyOf:
+            - { type: 'null' }
+            - { $ref: '#/components/schemas/Result' }
+        rematchConsents:
+          type: array
+          items: { $ref: '#/components/schemas/Id' }
+        applicableDeadline: { type: [string, 'null'], format: date-time }
+        serverTime: { type: string, format: date-time }
+    Result:
+      type: object
+      required: [kind, reason, winnerSeatIds, winningLines, terminalVersion]
+      properties:
+        kind: { enum: [WIN, DRAW, ABANDONED] }
+        reason: { enum: [LINE_COMPLETED, BOARD_FULL, RESIGNATION, DISCONNECT_FORFEIT, BOTH_ABSENT, IDLE_TIMEOUT] }
+        winnerSeatIds:
+          type: array
+          items: { $ref: '#/components/schemas/Id' }
+        winningLines: { $ref: '#/components/schemas/Lines' }
+        terminalVersion: { $ref: '#/components/schemas/Version' }

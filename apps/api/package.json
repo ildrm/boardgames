@@ -1,0 +1,35 @@
+{
+  "name": "@tablemate/api",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/application.ts", "./store": "./src/store.ts" },
+  "scripts": {
+    "dev": "node --import tsx src/main.ts",
+    "start": "node --import tsx src/main.ts",
+    "migrate": "node --import tsx src/migrate.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --import tsx --test src/*.test.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "11.2.11",
+    "@nestjs/core": "11.2.11",
+    "@nestjs/platform-express": "11.2.11",
+    "@socket.io/redis-streams-adapter": "0.3.1",
+    "@tablemate/contracts": "workspace:*",
+    "@tablemate/game-registry": "workspace:*",
+    "express": "5.1.0",
+    "pg": "8.16.3",
+    "redis": "5.10.0",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "socket.io": "4.8.4",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.5",
+    "@types/node": "24.10.1",
+    "@types/pg": "8.15.6",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3"
+  }
+}

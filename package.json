@@ -1,0 +1,33 @@
+{
+  "name": "tablemate",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.28.2",
+  "engines": {
+    "node": ">=24 <27"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter './apps/*' run dev",
+    "dev:fixture": "TABLEMATE_STORAGE=memory DATABASE_URL= REDIS_URL= EXTERNAL_WORKER=0 pnpm -r --parallel --filter @tablemate/api --filter @tablemate/web run dev",
+    "db:migrate": "pnpm --filter @tablemate/api migrate",
+    "lint": "eslint . && node scripts/check-boundaries.mjs",
+    "typecheck": "tsc --noEmit && pnpm -r --if-present typecheck",
+    "test": "node --import tsx --test 'packages/**/*.test.ts' && pnpm --filter @tablemate/api test",
+    "test:integration": "node --import tsx --test tests/integration/*.test.ts",
+    "test:e2e": "playwright test",
+    "build": "pnpm -r --if-present build",
+    "load:smoke": "node --import tsx tests/load/smoke.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.1",
+    "@axe-core/playwright": "4.11.1",
+    "@playwright/test": "1.56.1",
+    "@types/node": "24.10.1",
+    "eslint": "9.39.1",
+    "socket.io-client": "4.8.4",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.48.1"
+  }
+}

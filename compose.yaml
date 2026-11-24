@@ -1,0 +1,90 @@
+name: tablemate
+
+x-api: &api
+  build:
+    context: .
+    dockerfile: infra/docker/Dockerfile
+    target: service
+  command: ["pnpm", "--filter", "@tablemate/api", "start"]
+  environment: &service-env
+    DATABASE_URL: postgres://tablemate:tablemate@postgres:5432/tablemate
+    REDIS_URL: redis://redis:6379
+    PUBLIC_ORIGIN: http://localhost:8080,http://localhost:5173,http://localhost:3000
+    SESSION_REPLAY_KEY: tablemate-local-compose-development-fixture
+    PORT: "3000"
+    EXTERNAL_WORKER: "1"
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+    redis:
+      condition: service_healthy
+  init: true
+
+services:
+  postgres:
+    image: postgres:17.10-alpine
+    environment:
+      POSTGRES_USER: tablemate
+      POSTGRES_PASSWORD: tablemate
+      POSTGRES_DB: tablemate
+    ports: ["127.0.0.1:55432:5432"]
+    volumes: ["pg-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tablemate -d tablemate"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7.4.7-alpine
+    ports: ["127.0.0.1:56379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+      target: service
+    command: ["pnpm", "db:migrate"]
+    environment: *service-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *api
+    ports: ["127.0.0.1:3000:3000"]
+
+  api-secondary:
+    <<: *api
+    profiles: [replicas]
+    ports: ["127.0.0.1:3001:3000"]
+
+  worker:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+      target: service
+    command: ["pnpm", "--filter", "@tablemate/worker", "start"]
+    environment: *service-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    init: true
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+      target: web
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on: [api]
+
+volumes:
+  pg-data:

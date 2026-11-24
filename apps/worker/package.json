@@ -1,0 +1,8 @@
+{
+  "name": "@tablemate/worker",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "node --import tsx src/main.ts", "start": "node --import tsx src/main.ts", "typecheck": "tsc --noEmit -p tsconfig.json" },
+  "dependencies": { "@tablemate/api": "workspace:*" },
+  "devDependencies": { "@types/node": "24.10.1", "tsx": "4.21.0", "typescript": "5.9.3" }
+}

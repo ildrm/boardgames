@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 334" role="img" aria-labelledby="title desc">
+  <title id="title">Three Tablemate directions</title>
+  <desc id="desc">Each sample shows the same two-seat lobby and Tic-Tac-Toe board with different color and geometry.</desc>
+  <defs>
+    <g id="table">
+      <rect x="24" y="63" width="120" height="37" rx="5" fill="none" stroke="currentColor" opacity=".55"/>
+      <rect x="156" y="63" width="120" height="37" rx="5" fill="none" stroke="currentColor" opacity=".55"/>
+      <text x="38" y="86" fill="currentColor">Host</text><text x="170" y="86" fill="currentColor">Guest</text>
+      <text x="150" y="119" text-anchor="middle" fill="currentColor">Your turn</text>
+      <path d="M127 147v132m46-132v132M81 191h138m-138 44h138" fill="none" stroke="currentColor" opacity=".45"/>
+    </g>
+    <path id="cross" d="m91 157 25 25m0-25-25 25" stroke-width="5" stroke-linecap="round"/>
+    <circle id="ring" cx="151" cy="214" r="13" fill="none" stroke-width="5"/>
+  </defs>
+  <g font-family="system-ui, sans-serif" font-size="14">
+    <g transform="translate(8 8)" color="#243c37">
+      <rect width="300" height="318" rx="18" fill="#f5f4ee"/>
+      <text x="24" y="41" fill="currentColor" font-size="20" font-weight="700">Modern Tabletop</text>
+      <rect x="72" y="137" width="156" height="152" rx="13" fill="#e4ede7"/>
+      <use href="#table"/><use href="#cross" stroke="#126d59"/><use href="#ring" stroke="#a14b22"/>
+    </g>
+    <g transform="translate(330 8)" color="#283247">
+      <rect width="300" height="318" rx="5" fill="#f9efdb"/>
+      <text x="24" y="41" fill="currentColor" font-family="Georgia, serif" font-size="22">Paper &amp; Ink</text>
+      <rect x="72" y="137" width="156" height="152" fill="#fff8ea" stroke="#283247"/>
+      <use href="#table"/><use href="#cross" stroke="#33426b"/><use href="#ring" stroke="#a84524"/>
+    </g>
+    <g transform="translate(652 8)" color="#eef2ff">
+      <rect width="300" height="318" rx="7" fill="#161d33"/>
+      <text x="24" y="41" fill="currentColor" font-size="20" font-weight="700">Arcade Geometry</text>
+      <rect x="72" y="137" width="156" height="152" rx="3" fill="#253255" stroke="#7795f1"/>
+      <use href="#table"/><use href="#cross" stroke="#8daaff"/><use href="#ring" stroke="#ffcf70"/>
+    </g>
+  </g>
+</svg>

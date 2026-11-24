@@ -1,0 +1,9 @@
+{
+  "name": "@tablemate/design-tokens",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    "./theme.css": "./src/theme.css"
+  }
+}
